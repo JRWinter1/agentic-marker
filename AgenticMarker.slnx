@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/AgenticMarker/AgenticMarker.csproj" />
+    <Project Path="src/AgenticMarker.Web/AgenticMarker.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AgenticMarker.Tests/AgenticMarker.Tests.csproj" />
+  </Folder>
+  <Folder Name="/prompts/">
+    <File Path="prompts/persona.md" />
+  </Folder>
+  <Folder Name="/docs/">
+    <File Path="README.md" />
+    <File Path="CLAUDE.md" />
+  </Folder>
+  <Folder Name="/Examples/FakeStudent/">
+    <File Path="Examples/FakeStudent/StudentAnswer.md" />
+    <File Path="Examples/FakeStudent/calibration.md" />
+    <File Path="Examples/FakeStudent/marking-brief.md" />
+  </Folder>
+  <File Path="appsettings.json" />
+  <File Path=".editorconfig" />
+</Solution>

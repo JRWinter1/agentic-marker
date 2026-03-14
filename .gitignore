@@ -1,0 +1,22 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+.DS_Store
+
+# Generated feedback
+MarkedPapers/
+
+# Config with API keys
+src/AgenticMarker/appsettings.json
+
+# Real student data (keep FakeStudent only)
+Examples/*
+!Examples/FakeStudent/
+
+# Student submissions
+StudentResponses/
+
+# Uploaded files from web UI
+uploads/

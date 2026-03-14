@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agentic Marker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    h1 { margin-bottom: 0.5rem; }
+    .subtitle { color: #666; margin-bottom: 2rem; }
+
+    .section { margin-bottom: 1.5rem; }
+    .section label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 2rem;
+      text-align: center;
+      color: #888;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: #4a90d9;
+      background: #eef4fb;
+    }
+
+    .drop-zone.has-files {
+      border-color: #5cb85c;
+      background: #f0f9f0;
+      color: #333;
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .file-list {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .file-list .file-item {
+      display: inline-block;
+      background: #e8e8e8;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      margin: 0.25rem;
+    }
+
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .tab {
+      padding: 0.5rem 1rem;
+      border: 1px solid #ccc;
+      border-bottom: none;
+      border-radius: 8px 8px 0 0;
+      background: #eee;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+
+    .tab.active {
+      background: #fff;
+      border-bottom: 1px solid #fff;
+      margin-bottom: -1px;
+      z-index: 1;
+    }
+
+    .tab-content {
+      border: 1px solid #ccc;
+      border-radius: 0 8px 8px 8px;
+      background: #fff;
+      padding: 1rem;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      resize: vertical;
+    }
+
+    button#markBtn {
+      background: #4a90d9;
+      color: #fff;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    button#markBtn:hover { background: #3a7bc8; }
+    button#markBtn:disabled { background: #aaa; cursor: not-allowed; }
+
+    #progress {
+      display: none;
+      margin-top: 1.5rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .progress-bar-container {
+      background: #eee;
+      border-radius: 4px;
+      height: 24px;
+      margin: 1rem 0;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      background: #4a90d9;
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s;
+      border-radius: 4px;
+    }
+
+    .progress-bar.complete { background: #5cb85c; }
+
+    #log {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1rem;
+      border-radius: 4px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.85rem;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      margin-top: 1rem;
+    }
+
+    #results {
+      display: none;
+      margin-top: 1.5rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    #results h3 { margin-bottom: 0.75rem; }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    .result-item:last-child { border-bottom: none; }
+
+    .result-item a {
+      color: #4a90d9;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .result-item a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<h1>Agentic Marker</h1>
+<p class="subtitle">AI-powered assignment marking. Drop your files below and hit Mark.</p>
+
+<div class="section">
+  <label>Question</label>
+  <div class="tab-bar">
+    <div class="tab active" data-tab="upload">Upload File</div>
+    <div class="tab" data-tab="paste">Paste Text</div>
+  </div>
+  <div class="tab-content">
+    <div class="tab-panel active" id="tab-upload">
+      <div class="drop-zone" id="questionDrop">
+        <span>Drop question .doc / .docx here or click to browse</span>
+        <input type="file" accept=".doc,.docx" id="questionFile">
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-paste">
+      <textarea id="questionText" placeholder="Paste the assignment question here..."></textarea>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <label>Marking Brief / Rubric</label>
+  <div class="drop-zone" id="rubricDrop">
+    <span>Drop rubric .doc / .docx here or click to browse</span>
+    <input type="file" accept=".doc,.docx" id="rubricFile">
+  </div>
+</div>
+
+<div class="section">
+  <label>Student Answers</label>
+  <div class="drop-zone" id="answersDrop">
+    <span>Drop one or more .docx files here or click to browse</span>
+    <input type="file" accept=".doc,.docx" multiple id="answersFiles">
+    <div class="file-list" id="answersList"></div>
+  </div>
+</div>
+
+<button id="markBtn">Mark Submissions</button>
+
+<div id="progress">
+  <h3>Marking in progress...</h3>
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <p id="progressText"></p>
+  <div id="log"></div>
+</div>
+
+<div id="results">
+  <h3>Results</h3>
+  <div id="resultsList"></div>
+</div>
+
+<script>
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+  });
+
+  // Drop zone helpers
+  function setupDropZone(zoneId, inputId, multi) {
+    const zone = document.getElementById(zoneId);
+    const input = document.getElementById(inputId);
+
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      input.files = e.dataTransfer.files;
+      input.dispatchEvent(new Event('change'));
+    });
+
+    input.addEventListener('change', () => {
+      if (input.files.length > 0) {
+        zone.classList.add('has-files');
+        const span = zone.querySelector('span');
+        if (multi) {
+          const list = document.getElementById('answersList');
+          list.innerHTML = Array.from(input.files)
+            .map(f => `<span class="file-item">${f.name}</span>`)
+            .join('');
+          span.textContent = `${input.files.length} file(s) selected`;
+        } else {
+          span.textContent = input.files[0].name;
+        }
+      }
+    });
+  }
+
+  setupDropZone('questionDrop', 'questionFile', false);
+  setupDropZone('rubricDrop', 'rubricFile', false);
+  setupDropZone('answersDrop', 'answersFiles', true);
+
+  // Mark button
+  document.getElementById('markBtn').addEventListener('click', async () => {
+    const questionFile = document.getElementById('questionFile').files[0];
+    const questionText = document.getElementById('questionText').value;
+    const rubricFile = document.getElementById('rubricFile').files[0];
+    const answerFiles = document.getElementById('answersFiles').files;
+
+    const usingUpload = document.querySelector('.tab.active').dataset.tab === 'upload';
+
+    if (usingUpload && !questionFile) { alert('Please upload a question file.'); return; }
+    if (!usingUpload && !questionText.trim()) { alert('Please paste the question text.'); return; }
+    if (!rubricFile) { alert('Please upload the rubric / marking brief.'); return; }
+    if (answerFiles.length === 0) { alert('Please upload at least one student answer.'); return; }
+
+    const form = new FormData();
+    if (usingUpload) {
+      form.append('question', questionFile);
+    } else {
+      form.append('questionText', questionText);
+    }
+    form.append('rubric', rubricFile);
+    for (const f of answerFiles) {
+      form.append('answers', f);
+    }
+
+    const btn = document.getElementById('markBtn');
+    btn.disabled = true;
+    btn.textContent = 'Marking...';
+
+    const progressDiv = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const log = document.getElementById('log');
+    const resultsDiv = document.getElementById('results');
+    const resultsList = document.getElementById('resultsList');
+
+    progressDiv.style.display = 'block';
+    resultsDiv.style.display = 'none';
+    log.textContent = '';
+    resultsList.innerHTML = '';
+    progressBar.style.width = '0%';
+    progressBar.classList.remove('complete');
+
+    try {
+      const res = await fetch('/api/mark', { method: 'POST', body: form });
+      const { jobId } = await res.json();
+
+      // Listen for SSE progress
+      const evtSource = new EventSource(`/api/progress/${jobId}`);
+      evtSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        const pct = data.total > 0 ? Math.round((data.completed / data.total) * 100) : 0;
+        progressBar.style.width = pct + '%';
+        progressText.textContent = `${data.completed} / ${data.total} — ${data.current || ''}`;
+        log.textContent += data.message + '\n';
+        log.scrollTop = log.scrollHeight;
+
+        if (data.done) {
+          evtSource.close();
+          progressBar.style.width = '100%';
+          progressBar.classList.add('complete');
+          progressText.textContent = `Complete: ${data.completed} / ${data.total}`;
+          btn.disabled = false;
+          btn.textContent = 'Mark Submissions';
+
+          if (data.files && data.files.length > 0) {
+            resultsDiv.style.display = 'block';
+            resultsList.innerHTML = data.files.map(f => `
+              <div class="result-item">
+                <span>${f}</span>
+                <a href="/api/results/${encodeURIComponent(f)}" download>Download</a>
+              </div>
+            `).join('');
+          }
+        }
+      };
+
+      evtSource.onerror = () => {
+        evtSource.close();
+        btn.disabled = false;
+        btn.textContent = 'Mark Submissions';
+      };
+    } catch (err) {
+      alert('Error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Mark Submissions';
+    }
+  });
+</script>
+
+</body>
+</html>
