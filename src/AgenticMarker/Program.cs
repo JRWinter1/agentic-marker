@@ -8,14 +8,16 @@ using AgenticMarker.Tools;
 var questionArg = new Argument<FileInfo>("question", "Path to the question .doc/.docx file");
 var markingBriefArg = new Argument<FileInfo>("marking-brief", "Path to the marking brief / rubric .doc/.docx file");
 var answerArg = new Argument<FileInfo>("answer", "Path to the student answer .doc/.docx file");
+var skipCalibrationOption = new Option<bool>("--skip-calibration", getDefaultValue: () => true, "Skip loading calibration examples (rubric-only mode)");
 var rootCommand = new RootCommand("Agentic Marker - AI-powered assignment marking tool")
 {
     questionArg,
     markingBriefArg,
-    answerArg
+    answerArg,
+    skipCalibrationOption
 };
 
-rootCommand.SetHandler(async (FileInfo question, FileInfo markingBriefFile, FileInfo answer) =>
+rootCommand.SetHandler(async (FileInfo question, FileInfo markingBriefFile, FileInfo answer, bool skipCalibration) =>
 {
     Console.WriteLine("Agentic Marker starting...\n");
 
@@ -55,72 +57,85 @@ rootCommand.SetHandler(async (FileInfo question, FileInfo markingBriefFile, File
     var promptsDir = Path.Combine(AppContext.BaseDirectory, "prompts");
     var persona = File.ReadAllText(Path.Combine(promptsDir, "persona.md"));
 
-    // Load calibration examples from all subdirectories under Examples/
-    // Skip FakeStudent if real examples exist (FakeStudent is a fallback for fresh clones)
     var projectRoot = FindProjectRoot(AppContext.BaseDirectory);
-    var examplesDir = Path.Combine(projectRoot, "Examples");
-    var allCalibrationFiles = Directory.GetFiles(examplesDir, "calibration.md", SearchOption.AllDirectories);
-    var realCalibrationFiles = allCalibrationFiles
-        .Where(f => !Path.GetFileName(Path.GetDirectoryName(f)!).Equals("FakeStudent", StringComparison.OrdinalIgnoreCase))
-        .ToArray();
-    var calibrationFiles = realCalibrationFiles.Length > 0 ? realCalibrationFiles : allCalibrationFiles;
-    if (realCalibrationFiles.Length > 0 && allCalibrationFiles.Length > realCalibrationFiles.Length)
+    var calibrationSection = "";
+
+    if (!skipCalibration)
     {
-        Console.WriteLine("  Skipping FakeStudent (real calibration examples found)");
+        // Load calibration examples from all subdirectories under Examples/
+        // Skip FakeStudent if real examples exist (FakeStudent is a fallback for fresh clones)
+        var examplesDir = Path.Combine(projectRoot, "Examples");
+        var allCalibrationFiles = Directory.GetFiles(examplesDir, "calibration.md", SearchOption.AllDirectories);
+        var realCalibrationFiles = allCalibrationFiles
+            .Where(f => !Path.GetFileName(Path.GetDirectoryName(f)!).Equals("FakeStudent", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+        var calibrationFiles = realCalibrationFiles.Length > 0 ? realCalibrationFiles : allCalibrationFiles;
+        if (realCalibrationFiles.Length > 0 && allCalibrationFiles.Length > realCalibrationFiles.Length)
+        {
+            Console.WriteLine("  Skipping FakeStudent (real calibration examples found)");
+        }
+
+        var calibrationBlock = new System.Text.StringBuilder();
+        foreach (var calFile in calibrationFiles.Order())
+        {
+            var calContent = File.ReadAllText(calFile);
+            var calDir = Path.GetDirectoryName(calFile)!;
+            var folderName = Path.GetFileName(calDir);
+            calibrationBlock.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"### Example: {folderName}");
+            calibrationBlock.AppendLine();
+
+            // Load the rubric/marking brief if present in the same directory
+            var rubricPath = Path.Combine(calDir, "marking-brief.md");
+            if (File.Exists(rubricPath))
+            {
+                var rubricContent = File.ReadAllText(rubricPath);
+                calibrationBlock.AppendLine("#### Rubric");
+                calibrationBlock.AppendLine();
+                calibrationBlock.AppendLine(rubricContent);
+                calibrationBlock.AppendLine();
+            }
+
+            // Load the student answer if present in the same directory
+            var answerFiles = Directory.GetFiles(calDir, "StudentAnswer.*");
+            if (answerFiles.Length > 0)
+            {
+                var calAnswerMd = DocumentConverter.ConvertToMarkdown(answerFiles[0]);
+                calibrationBlock.AppendLine("#### Student Answer");
+                calibrationBlock.AppendLine();
+                calibrationBlock.AppendLine(calAnswerMd);
+                calibrationBlock.AppendLine();
+                Console.WriteLine($"  Loaded calibration example: {folderName} (with rubric, student answer, {calAnswerMd.Length} chars)");
+            }
+            else
+            {
+                Console.WriteLine($"  Loaded calibration example: {folderName} (calibration.md only)");
+            }
+
+            calibrationBlock.AppendLine("#### Marking & Feedback");
+            calibrationBlock.AppendLine();
+            calibrationBlock.AppendLine(calContent);
+            calibrationBlock.AppendLine();
+        }
+
+        calibrationSection = $"""
+
+            ## Graded Examples (for calibration)
+
+            Study these completed examples carefully. They show the expected quality, tone, detail level, and marking standards for your feedback.
+
+            {calibrationBlock}
+            """;
     }
-
-    var calibrationBlock = new System.Text.StringBuilder();
-    foreach (var calFile in calibrationFiles.Order())
+    else
     {
-        var calContent = File.ReadAllText(calFile);
-        var calDir = Path.GetDirectoryName(calFile)!;
-        var folderName = Path.GetFileName(calDir);
-        calibrationBlock.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"### Example: {folderName}");
-        calibrationBlock.AppendLine();
-
-        // Load the rubric/marking brief if present in the same directory
-        var rubricPath = Path.Combine(calDir, "marking-brief.md");
-        if (File.Exists(rubricPath))
-        {
-            var rubricContent = File.ReadAllText(rubricPath);
-            calibrationBlock.AppendLine("#### Rubric");
-            calibrationBlock.AppendLine();
-            calibrationBlock.AppendLine(rubricContent);
-            calibrationBlock.AppendLine();
-        }
-
-        // Load the student answer if present in the same directory
-        var answerFiles = Directory.GetFiles(calDir, "StudentAnswer.*");
-        if (answerFiles.Length > 0)
-        {
-            var calAnswerMd = DocumentConverter.ConvertToMarkdown(answerFiles[0]);
-            calibrationBlock.AppendLine("#### Student Answer");
-            calibrationBlock.AppendLine();
-            calibrationBlock.AppendLine(calAnswerMd);
-            calibrationBlock.AppendLine();
-            Console.WriteLine($"  Loaded calibration example: {folderName} (with rubric, student answer, {calAnswerMd.Length} chars)");
-        }
-        else
-        {
-            Console.WriteLine($"  Loaded calibration example: {folderName} (calibration.md only)");
-        }
-
-        calibrationBlock.AppendLine("#### Marking & Feedback");
-        calibrationBlock.AppendLine();
-        calibrationBlock.AppendLine(calContent);
-        calibrationBlock.AppendLine();
+        Console.WriteLine("  Skipping calibration examples (--skip-calibration is set)");
     }
 
     var systemPrompt = $"""
         {persona}
 
         {markingBrief}
-
-        ## Graded Examples (for calibration)
-
-        Study these completed examples carefully. They show the expected quality, tone, detail level, and marking standards for your feedback.
-
-        {calibrationBlock}
+        {calibrationSection}
         """;
 
     // Build initial state
@@ -167,7 +182,7 @@ rootCommand.SetHandler(async (FileInfo question, FileInfo markingBriefFile, File
     var outputPath = Path.Combine(markedPapersDir, $"{studentId}-Feedback.md");
     FeedbackDocument.Generate(result, outputPath);
 
-}, questionArg, markingBriefArg, answerArg);
+}, questionArg, markingBriefArg, answerArg, skipCalibrationOption);
 
 return await rootCommand.InvokeAsync(args);
 
