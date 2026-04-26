@@ -8,7 +8,7 @@ Mark a university assignment using the same workflow and standards as a human le
 /mark-assignment <question-file> <marking-brief-file> <student-answer-file>
 ```
 
-All three file paths are required. Supported formats: `.doc`, `.docx`, `.md`, `.txt`.
+All three file paths are required. Supported formats: `.docx`, `.md`, `.txt`.
 
 ## Instructions
 
@@ -48,7 +48,7 @@ Write a holistic summary of the student's overall performance. This should:
 - Acknowledge key strengths
 - Identify the main limitations
 - Provide a balanced assessment
-- Calculate and state the overall mark percentage
+- Calculate the overall mark as the weighted average of criterion marks: Knowledge & Understanding (40%) + Criticality (30%) + Reading and Research (20%) + Writing Style (10%). Round to the nearest whole number.
 
 ### Step 5 — AI Use Detection
 
